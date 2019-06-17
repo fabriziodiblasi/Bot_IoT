@@ -1,118 +1,94 @@
-import telepot
+import serial
+import telebot
 import time
-import serial as ser
-from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-
-TOKEN = "728881262:AAHL2_K1vK4kODhj5NUqxk7gO3-aMqYCE6E"
 connected = False
 port = 'COM3'
 baud = 9600
-ser = ser.Serial(port, baud, timeout=500)
+ser = serial.Serial(port, baud, timeout=0)
 
-'''
-def leggi_seriale():
-    data_str = " "
-    print("dentro funzione leggi seriale")
-    while True :
-        if ser.inWaiting() > 0:
-            data_str = ser.read(ser.inWaiting()).decode('ascii')
-            print("data_str ",data_str)
-        if data_str[0]==" ":
-            print("return q")
-            return 'q'
-    
-        if data_str[0] == 'w':
-            print("return w")
-            return "w"
-        if data_str[0] == 'a':
-            val = ""
-            for i in data_str:
-                if i != 'a' and i != '_':
-                    val += i
-            print("return val ",'a'+val)
-            return 'a'+val
-'''
+TOKEN = "634289689:AAHPe0wqJomFHR7cZR4kbqY5Bw8HeO1_Ecg"
 
 
+bot = telebot.TeleBot(TOKEN)
+stato = 0
+# 0 - devo ancora eseguire /start
+# 1 - ho eseguito già /start
 
-def on_chat_message(msg):  # crea la tastiera personalizzata
-    content_type, chat_type, chat_id = telepot.glance(msg)
-    '''
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Chiudi Valvola", callback_data='/chiudi'),
-                                                      InlineKeyboardButton(text="Apri Valvola", callback_data='/apri')],
-                                                     [InlineKeyboardButton(text="Monitora", callback_data='/monitora'),
-                                                      InlineKeyboardButton(text="Andamento giornaliero", callback_data='/andamento')]])
-    '''
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Start", callback_data='/start')]])
-    bot.sendMessage(chat_id, 'seleziona un comando', reply_markup=keyboard)
-    print(content_type,' ', chat_type,' ', chat_id)
+# Handle '/start' and '/help'
+@bot.message_handler(commands=['help'])
+def send_welcome(message):
+    bot.reply_to(message, "digita /start, o guarda i comandi preimpostati")
 
+@bot.message_handler(commands=['start'])
+def start_control(message):
+    global stato
+    gas = 0
+    if stato != 0:
+        bot.send_message(message.chat.id, "IMPOSSIBILE : SONO GIA' IN ASCOLTO")
 
-def on_callback_query(msg):  # aziona i vari LED in base al pulsante toccato
-    query_id, from_id, query_data = telepot.glance(msg, flavor='callback_query')
-    #content_type, chat_type, chat_id = telepot.glance(msg)
-
-    print('Callback Query:', ' ', query_id, ' ', from_id, ' ', query_data)
-
-    if query_data == '/chiudi':
-        #bot.answerCallbackQuery(query_id, text='comando chiudi eseguito')
-        bot.sendMessage(from_id,"comando chiudi eseguito")
-        bot.answerCallbackQuery(query_id, text='')
-
-    elif query_data == '/apri':
-        bot.sendMessage(from_id, text='Comando apri eseguito')
-        bot.answerCallbackQuery(query_id, text='')
-
-    elif query_data == '/start':
-        bot.sendMessage(from_id, text='Benvenuto, contatto il MCU')
-        data_str = " "
-        flag = 1
+    if stato == 0:
+        stato = 1
+        bot.reply_to(message, "Avvio il controllo del sistema")
         while True:
-            #print("sto monitorando")
             data_str = " "
-            if ser.inWaiting() > 0:
+            while ser.inWaiting() > 0:
                 data_str = ser.read(ser.inWaiting()).decode('ascii')
                 print("data_str ", data_str)
-
             if data_str[0] == 'w':
-                stato = 0 # non c'è alcuna emergenza
-                print("stato 0")
-            if data_str[0] == 'a':
-                stato = 1
-
-            if stato ==0 :
-                print("stato 0")
-                bot.sendMessage(from_id, text='tutti i sistemi funzionano normalmente')
-                stato = -1
-
-            if stato ==1 and flag == 1 :
-                flag = 0
-                bot.sendMessage(from_id, text='rilevata fuga di gas')
-                bot.sendMessage(from_id, text='attenzione!!!! livello di gas sopra la norma')
-                keyboard = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="Chiudi Valvola", callback_data='/chiudi'),
-                                      InlineKeyboardButton(text="Apri Valvola", callback_data='/apri')]])
-                bot.sendMessage(from_id, 'seleziona un comando', reply_markup=keyboard)
-
-                bot.sendMessage(from_id, text='rilevata fuga di gas')
-                stato = -1
-            time.sleep(0.1)
+                if gas == 0:
+                    time.sleep(0.5)
+                    bot.send_message(message.chat.id,"I sistemi funzionano normalmente. Resto in attesa")
 
 
-    elif query_data == '/andamento':
-        bot.sendMessage(from_id, text='Andamento eseguito')
-        bot.answerCallbackQuery(query_id, text='')
+            if data_str[0] == 'a' and gas == 0:
+                gas=1
+                bot.send_message(message.chat.id,"Emergenza : Rilevato valore di gas sopra la Norma"
+                                                 "\nChiudere il condotto ? /chiudi"
+                                                 "\nIgnorare il problema ? /ignora"
+                                                 "\n\nil rilevamento verrà fermato, per continuare :"
+                                                 "\n/start")
+                break
+
+            print("sto eseguendo")
+            time.sleep(1)
+        '''
+        print("Fuori Dal While, Gas = ",gas)
+        stato = 0
+        '''
+        print("Fuori Dal While, Gas = ", gas)
+        if gas == 1:
+            pass
+
+        stato = 0
+
+@bot.message_handler(commands=['ignora'])
+def start_control(message):
+    bot.reply_to(message, "ignoro")
+
+@bot.message_handler(commands=['apri'])
+def start_control(message):
+    bot.reply_to(message, "apro")
+
+@bot.message_handler(commands=['chiudi'])
+def start_control(message):
+    bot.reply_to(message, "chiudo")
+
+'''
+# Handle all other messages with content_type 'text' (content_types defaults to ['text'])
+@bot.message_handler(func=lambda message: True)
+def echo_message(message):
+    bot.reply_to(message, message.text)
+# default handler for every other text
+'''
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def command_default(m):
+    # this is the standard reply to a normal message
+    bot.send_message(m.chat.id, "Non ho capito \"" + m.text + "\"\nProva a digitare il comando /help")
+
+bot.polling()
+stato = 0
+while True:
+    print("culo")
 
 
 
-
-bot = telepot.Bot(TOKEN)
-bot.message_loop({'chat': on_chat_message,
-                  'callback_query': on_callback_query})
-print('Listening ...')
-
-
-while 1:
-
-    time.sleep(0.1)
