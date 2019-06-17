@@ -13,6 +13,7 @@ bot = telebot.TeleBot(TOKEN)
 stato = 0
 # 0 - devo ancora eseguire /start
 # 1 - ho eseguito già /start
+# 2 - ho chiuso la valvola
 
 # Handle '/start' and '/help'
 @bot.message_handler(commands=['help'])
@@ -42,11 +43,18 @@ def start_control(message):
 
             if data_str[0] == 'a' and gas == 0:
                 gas=1
+
+                
                 bot.send_message(message.chat.id,"Emergenza : Rilevato valore di gas sopra la Norma"
                                                  "\nChiudere il condotto ? /chiudi"
                                                  "\nIgnorare il problema ? /ignora"
                                                  "\n\nil rilevamento verrà fermato, per continuare :"
                                                  "\n/start")
+
+                markdown = """
+                        *in assenza di risposta, verrà chiuso automaticamente tra 5 secondi*
+                        """
+                ret_msg = bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
                 break
 
             print("sto eseguendo")
@@ -57,8 +65,14 @@ def start_control(message):
         '''
         print("Fuori Dal While, Gas = ", gas)
         if gas == 1:
-            pass
-
+            time.sleep(5)
+            if stato !=2:
+                #richiamerò la funzione che mandail messaggio di chiusura ad arduino
+                markdown = """
+                           *Valvola chiusa*
+                           """
+                bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+                pass
         stato = 0
 
 @bot.message_handler(commands=['ignora'])
@@ -72,6 +86,7 @@ def start_control(message):
 @bot.message_handler(commands=['chiudi'])
 def start_control(message):
     bot.reply_to(message, "chiudo")
+    stato = 2
 
 '''
 # Handle all other messages with content_type 'text' (content_types defaults to ['text'])
