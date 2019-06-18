@@ -30,13 +30,13 @@ void loop()
 		case 1:
 			//rilevata fuga di gas
 			ad_value=analogRead(gas_ain);
-      sprintf(buffer,"%c%d%c",'a',ad_value,'_');
-      /*
-			Serial.print('a');
-			Serial.print(ad_value);
-      Serial.print('_');
-      */
-      Serial.print(buffer);
+			sprintf(buffer,"%c%d%c",'a',ad_value,'_');
+			/*
+					Serial.print('a');
+					Serial.print(ad_value);
+			Serial.print('_');
+			*/
+			Serial.print(buffer);
 			break;
 		case 2:
 			//nessuna fuga di gas
