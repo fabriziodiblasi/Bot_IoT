@@ -14,6 +14,7 @@ stato = 0
 # 0 - devo ancora eseguire /start
 # 1 - ho eseguito già /start
 # 2 - ho chiuso la valvola
+# 3 - ignoro l'emergenza
 
 # Handle '/start' and '/help'
 @bot.message_handler(commands=['help'])
@@ -24,7 +25,7 @@ def send_welcome(message):
 def start_control(message):
     global stato
     gas = 0
-    if stato != 0:
+    if stato == 1:
         bot.send_message(message.chat.id, "IMPOSSIBILE : SONO GIA' IN ASCOLTO")
 
     if stato == 0:
@@ -66,7 +67,7 @@ def start_control(message):
         print("Fuori Dal While, Gas = ", gas)
         if gas == 1:
             time.sleep(5)
-            if stato !=2:
+            if stato == 1:
                 #richiamerò la funzione che mandail messaggio di chiusura ad arduino
                 markdown = """
                            *Valvola chiusa*
@@ -77,6 +78,8 @@ def start_control(message):
 
 @bot.message_handler(commands=['ignora'])
 def start_control(message):
+    global stato
+    stato = 3
     bot.reply_to(message, "ignoro")
 
 @bot.message_handler(commands=['apri'])
@@ -85,8 +88,10 @@ def start_control(message):
 
 @bot.message_handler(commands=['chiudi'])
 def start_control(message):
-    bot.reply_to(message, "chiudo")
+    global stato
     stato = 2
+    bot.reply_to(message, "chiudo")
+
 
 '''
 # Handle all other messages with content_type 'text' (content_types defaults to ['text'])
