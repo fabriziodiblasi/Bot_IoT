@@ -16,6 +16,33 @@ stato = 0
 # 2 - ho chiuso la valvola
 # 3 - ignoro l'emergenza
 
+
+def estrai_valore(str):
+    out_file = open("misurazioni.csv", "a+")
+    val = ''
+    for x in str:
+        if x != 'a' and x != 'w' and x != '_':
+            # print("x : ",x)
+            val = val + x
+    print("Val : ", val)
+    out_file.write('"' + val + '"' + "\n")
+    return val
+
+
+
+def chiudi_valvola():
+    '''
+    invio il carattere 'c' che serve a far chiudere la valvola del gas
+    '''
+    ser.write('c')
+
+
+def apri_valvola():
+    '''
+    invio il carattere 'o' che serve a far chiudere la valvola del gas
+    '''
+    ser.write('o')
+
 # Handle '/start' and '/help'
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
@@ -44,9 +71,9 @@ def start_control(message):
 
             if data_str[0] == 'a' and gas == 0:
                 gas=1
-
+                num=estrai_valore(data_str)
                 
-                bot.send_message(message.chat.id,"Emergenza : Rilevato valore di gas sopra la Norma"
+                bot.send_message(message.chat.id,"Emergenza : Rilevato valore di gas sopra la Norma : " + num +
                                                  "\nChiudere il condotto ? /chiudi"
                                                  "\nIgnorare il problema ? /ignora"
                                                  "\n\nil rilevamento verrà fermato, per continuare :"
@@ -108,7 +135,7 @@ def command_default(m):
 bot.polling()
 stato = 0
 while True:
-    print("culo")
+    print("hello_world")
 
 
 

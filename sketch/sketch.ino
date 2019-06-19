@@ -23,8 +23,8 @@ void loop()
  
 	if(digitalRead(gas_din)==LOW) stato = 1; //c'è gas
 	
-	if(digitalRead(gas_din)==HIGH && stato != 3 ) stato = 2; //non c'è gas. entro una sola volta nello stato di waiting
-	
+	//if(digitalRead(gas_din)==HIGH && stato != 3 ) stato = 2; //non c'è gas. entro una sola volta nello stato di waiting
+	if(digitalRead(gas_din)==HIGH) stato = 2;
 
 	switch(stato){
 		case 1:
@@ -40,8 +40,29 @@ void loop()
 			break;
 		case 2:
 			//nessuna fuga di gas
+			/*
+			ogni mezzo secondo invio la misurazione del gas a livello normale
+			vecchia versione
 			Serial.print("w");
 			stato = 3; 
+			break;
+			*/
+			while(true){
+				ad_value=analogRead(gas_ain);
+				sprintf(buffer,"%c%d%c",'w',ad_value,'_');
+				Serial.print(buffer);
+				
+				if (digitalRead(gas_din)==HIGH){
+					stato =1;
+					break;
+				} 
+
+				if (Serial.available() > 0) {
+					stato = 3;
+					break;
+				}
+				delay(500);
+			}
 			break;
 		case 3:
 			/*lo stato 3 è quello che riceve dati dal bot python*/

@@ -5,7 +5,7 @@ connected = False
 port = 'COM3'
 baud = 9600
 ser = serial.Serial(port, baud, timeout=0)
-out_file = open("dataset.txt", "w")
+out_file = open("dataset.txt", "a+")
 for i in range(5000):
     while ser.inWaiting() > 0:
         data_str = ser.read(ser.inWaiting()).decode('ascii')
