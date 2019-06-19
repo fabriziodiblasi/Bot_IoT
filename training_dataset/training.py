@@ -13,14 +13,11 @@ for i in range(5000):
         # Scrive un file.
         val=''
         for x in data_str:
-            if x != 'L' and x != 'H' and x != '_':
+            if x != 'a' and x != 'w' and x != '_':
                 # print("x : ",x)
                 val = val + x
-        print("Val : ", val)
-
-        out_file.write(val+"\n")
-
-
+        if val !='':
+            print("Valore letto : ", val)
+            out_file.write('"' + val + '"' + "\n")
     time.sleep(0.5)
-
 out_file.close()
