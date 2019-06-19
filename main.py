@@ -115,6 +115,12 @@ def start_control(message):
                    """
         bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
         chiudi_valvola()
+    else:
+        markdown = """
+                    _La valvola è già chiusa_
+                    """
+        bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+        chiudi_valvola()
 
 
 @bot.message_handler(commands=['ignora'])
@@ -125,7 +131,10 @@ def start_control(message):
 
 @bot.message_handler(commands=['apri'])
 def start_control(message):
+    global chiuso
+    chiuso = 0
     bot.reply_to(message, "apro")
+    apri_valvola()
 
 @bot.message_handler(commands=['chiudi'])
 def start_control(message):
@@ -148,9 +157,7 @@ def command_default(m):
     bot.send_message(m.chat.id, "Non ho capito \"" + m.text + "\"\nProva a digitare il comando /help")
 
 bot.polling()
-stato = 0
-while True:
-    print("hello_world")
+
 
 
 
