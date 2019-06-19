@@ -11,6 +11,8 @@ TOKEN = "634289689:AAHPe0wqJomFHR7cZR4kbqY5Bw8HeO1_Ecg"
 
 bot = telebot.TeleBot(TOKEN)
 stato = 0
+chiuso = 0
+ingnora = 0
 # 0 - devo ancora eseguire /start
 # 1 - ho eseguito già /start
 # 2 - ho chiuso la valvola
@@ -24,8 +26,12 @@ def estrai_valore(str):
         if x != 'a' and x != 'w' and x != '_':
             # print("x : ",x)
             val = val + x
-    print("Val : ", val)
-    out_file.write('"' + val + '"' + "\n")
+        if x =='_':
+            break
+    if val !='':
+        print("Valore letto : ", val)
+        out_file.write('"' + val + '"' + "\n")
+        out_file.close()
     return val
 
 
@@ -34,14 +40,14 @@ def chiudi_valvola():
     '''
     invio il carattere 'c' che serve a far chiudere la valvola del gas
     '''
-    ser.write('c')
+    ser.write(str.encode('c'))
 
 
 def apri_valvola():
     '''
     invio il carattere 'o' che serve a far chiudere la valvola del gas
     '''
-    ser.write('o')
+    ser.write(str.encode('o'))
 
 # Handle '/start' and '/help'
 @bot.message_handler(commands=['help'])
@@ -51,62 +57,70 @@ def send_welcome(message):
 @bot.message_handler(commands=['start'])
 def start_control(message):
     global stato
-    gas = 0
+    global chiuso
+
+    flag = 0
+    fuga = 0
     if stato == 1:
         bot.send_message(message.chat.id, "IMPOSSIBILE : SONO GIA' IN ASCOLTO")
-
+        return
     if stato == 0:
         stato = 1
-        bot.reply_to(message, "Avvio il controllo del sistema")
         while True:
-            data_str = " "
             while ser.inWaiting() > 0:
                 data_str = ser.read(ser.inWaiting()).decode('ascii')
-                print("data_str ", data_str)
-            if data_str[0] == 'w':
-                if gas == 0:
+                val=estrai_valore(data_str)
+                if data_str[0] == 'w' and flag == 0:
+                    print("tutto ok")
+                    flag =1
+                    fuga = 0
+                    '''
+                    flag serve a far entrare una sola volta nel ciclo il programma
+                    in modo da mandare un solo messaggio all'utente
+                    '''
                     time.sleep(0.5)
-                    bot.send_message(message.chat.id,"I sistemi funzionano normalmente. Resto in attesa")
+                    bot.send_message(message.chat.id, "I sistemi funzionano normalmente. Resto in attesa")
 
+                if data_str[0] == 'a':
+                    print("attenzione")
+                    fuga = 1
+                    bot.send_message(message.chat.id, "Emergenza : Rilevata fuga di gas : " + val +
+                                     "\nChiudere il condotto ? /chiudi"
+                                     "\nIgnorare il problema ? /ignora"
+                                     "\n\nIL RILEVAMENTO VERRA' FERMATO!!"
+                                     "\n per continuare :"
+                                     "\n/start")
+                    time.sleep(0.5)
+                    markdown = """
+                                *in assenza di risposta, verrà chiuso automaticamente tra 5 secondi*
+                                """
+                    ret_msg = bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+                    break #esco dal while della ricezione da seriale
+                time.sleep(0.5)
 
-            if data_str[0] == 'a' and gas == 0:
-                gas=1
-                num=estrai_valore(data_str)
-                
-                bot.send_message(message.chat.id,"Emergenza : Rilevato valore di gas sopra la Norma : " + num +
-                                                 "\nChiudere il condotto ? /chiudi"
-                                                 "\nIgnorare il problema ? /ignora"
-                                                 "\n\nil rilevamento verrà fermato, per continuare :"
-                                                 "\n/start")
+            if fuga == 1:
+                '''alla fine del while di ricezione da seriale controllo il motivo dell'uscita
+                perchè è possibile o che arduino sia malfunzionante e quindi non manda più niente
+                oppure 
+                caso principale che sono uscito perchè ho rilevato una fuga di gas'''
+                break # esco dal while infinito
+    stato=0
+    time.sleep(5)
+    if chiuso == 0:
+        # richiamerò la funzione che mandail messaggio di chiusura ad arduino
+        chiuso=1
 
-                markdown = """
-                        *in assenza di risposta, verrà chiuso automaticamente tra 5 secondi*
-                        """
-                ret_msg = bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
-                break
+        markdown = """
+                   *Valvola chiusa*
+                   """
+        bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+        chiudi_valvola()
 
-            print("sto eseguendo")
-            time.sleep(1)
-        '''
-        print("Fuori Dal While, Gas = ",gas)
-        stato = 0
-        '''
-        print("Fuori Dal While, Gas = ", gas)
-        if gas == 1:
-            time.sleep(5)
-            if stato == 1:
-                #richiamerò la funzione che mandail messaggio di chiusura ad arduino
-                markdown = """
-                           *Valvola chiusa*
-                           """
-                bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
-                pass
-        stato = 0
 
 @bot.message_handler(commands=['ignora'])
 def start_control(message):
-    global stato
-    stato = 3
+    global ignora
+    ignora = 1
     bot.reply_to(message, "ignoro")
 
 @bot.message_handler(commands=['apri'])
@@ -115,9 +129,10 @@ def start_control(message):
 
 @bot.message_handler(commands=['chiudi'])
 def start_control(message):
-    global stato
-    stato = 2
+    global chiuso
+    chiuso = 1
     bot.reply_to(message, "chiudo")
+    chiudi_valvola()
 
 
 '''

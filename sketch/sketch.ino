@@ -12,6 +12,13 @@ char buffer[8];
 
 volatile int stato = 0;
 volatile int valv_stato = -1;
+
+void scrivi_seriale(char tipo_messaggio, int value){
+	sprintf(buffer,"%c%d%c",tipo_messaggio,value,'_');
+	Serial.print(buffer);
+	buffer[0]='\0';
+}
+
 void setup()
 {
 	pinMode(gas_din,INPUT);
@@ -30,13 +37,17 @@ void loop()
 		case 1:
 			//rilevata fuga di gas
 			ad_value=analogRead(gas_ain);
-			sprintf(buffer,"%c%d%c",'a',ad_value,'_');
+			scrivi_seriale('a',ad_value);
 			/*
+			sprintf(buffer,"%c%d%c",'a',ad_value,'_');
+			
 					Serial.print('a');
 					Serial.print(ad_value);
 			Serial.print('_');
-			*/
+			
 			Serial.print(buffer);
+			buffer="";
+			*/
 			break;
 		case 2:
 			//nessuna fuga di gas
@@ -49,11 +60,16 @@ void loop()
 			*/
 			while(true){
 				ad_value=analogRead(gas_ain);
+				scrivi_seriale('w',ad_value);
+				/* 
 				sprintf(buffer,"%c%d%c",'w',ad_value,'_');
 				Serial.print(buffer);
-				
-				if (digitalRead(gas_din)==HIGH){
-					stato =1;
+				buffer="";
+				*/
+				if (digitalRead(gas_din)==LOW){
+					stato = 1;
+					ad_value=analogRead(gas_ain);
+					scrivi_seriale('a',ad_value);
 					break;
 				} 
 
@@ -66,14 +82,17 @@ void loop()
 			break;
 		case 3:
 			/*lo stato 3 è quello che riceve dati dal bot python*/
-			if (Serial.available() > 0) {
-				// read the incoming byte:
-				incomingByte = Serial.read();
-				//applico la decisione dello stato in base al carattere ricevuto dal bot
-				if(incomingByte == 'c') valv_stato = 0; //chiudi la valvola
-				if(incomingByte == 'o') valv_stato = 1; //apri la valvola
-				if(incomingByte == 'i') valv_stato = 2; //ignora emergenza
-			}
+			//if (Serial.available() > 0) {
+			/*
+			l'if non serve più perche il controllo l'ho già fatto nello stato 2
+			*/
+			// read the incoming byte:
+			incomingByte = Serial.read();
+			//applico la decisione dello stato in base al carattere ricevuto dal bot
+			if(incomingByte == 'c') valv_stato = 0; //chiudi la valvola
+			if(incomingByte == 'o') valv_stato = 1; //apri la valvola
+			if(incomingByte == 'i') valv_stato = 2; //ignora emergenza
+			//}
 			break;
 	}
 
