@@ -1,6 +1,7 @@
 //analog in A0 -->uscita anlogica del sensore
 //digital in 2 -->usnita digitale del sensore
 #include <stdio.h>
+#include <Servo.h>
 int gas_din=2;
 int gas_ain=A0;
 int ad_value;
@@ -8,7 +9,8 @@ int incomingByte = 0;
 int valvola = 1; // 1 = aperta   |  0 = chiusa
 char buffer[8];
 
-
+Servo myservo;
+int pos = 0;
 
 volatile int stato = 0;
 volatile int valv_stato = -1;
@@ -21,6 +23,7 @@ void scrivi_seriale(char tipo_messaggio, int value){
 
 void setup()
 {
+  myservo.attach(9);
 	pinMode(gas_din,INPUT);
 	pinMode(gas_ain,INPUT);
 	Serial.begin(9600);
@@ -60,10 +63,20 @@ void loop()
 		case 0:
 			//chiudo la vavola
 			valvola = 0;
+      for(pos = 0; pos < 90; pos += 1)
+      {
+        myservo.write(pos);
+        delay(15);
+      }
 			break;
 		case 1:
 			//apro la valovla
 			if(valvola != 1) valvola = 1;
+      for(pos = 90; pos>=1; pos-=1)
+      {
+        myservo.write(pos);
+        delay(15);
+      }
 			break;
 		case 3:
 			//ignoro l'emergenza

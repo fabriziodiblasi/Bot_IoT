@@ -2,6 +2,9 @@ import serial
 import telebot
 import time
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
 connected = False
 port = 'COM3'
 baud = 9600
@@ -30,8 +33,8 @@ def calcola_probabilita(val, media, sigma):
 
 
 def scrivi_val_su_file(val):
-    out_file = open("misurazioni.csv", "a+")
-    out_file.write('"' + val + '"' + "\n")
+    out_file = open("misurazioni.txt", "a+")
+    out_file.write(val + "\n")
     out_file.close()
 
 
@@ -75,6 +78,7 @@ def send_welcome(message):
     /chiudi - Chiude la valvola
     /apri - Apre la valvola
     /ignora - Ignora il messaggio di emergenza
+    /istogramma - Istogramma delle misurazioni effettuate
     """
     bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
 
@@ -178,6 +182,36 @@ def start_control(message):
     bot.reply_to(message, "chiudo")
     chiudi_valvola()
 
+def calcola_istogramma():
+    seq_in = np.array([])
+
+    in_file = open("misurazioni.txt", "r")
+    # text = in_file.read()
+    for i in in_file.read().split():
+        #print(i)
+        i = int(i)
+        if i != 0 and i < 900:
+            # print(i)
+            seq_in = np.append(seq_in, int(i))
+    in_file.close()
+
+    fig = plt.figure()
+    plt.hist(seq_in, normed=False, bins=30)
+    plt.ylabel('Frequenza');
+    plt.xlabel('Valori');
+    fig.savefig('plot.png')
+    #plt.show()
+
+
+# Handle '/istogramma'
+@bot.message_handler(commands=['istogramma'])
+def send_welcome(message):
+    bot.send_message(message.chat.id, "Invio Instogramma")
+    # sendPhoto
+    calcola_istogramma()
+    time.sleep(1)
+    photo = open("plot.png", 'rb')
+    bot.send_photo(message.chat.id, photo)
 
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])

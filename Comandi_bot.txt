@@ -1,0 +1,6 @@
+help - Lista comandi disponibili
+start - Avvio monitoramento del sistema
+chiudi - Chiude la valvola
+apri - Apre la valvola
+ignora - Ignora il messaggio di emergenza
+istogramma - Istogramma delle misurazioni effettuate
