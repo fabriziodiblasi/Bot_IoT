@@ -28,71 +28,31 @@ void setup()
 void loop()
 {
  
-	if(digitalRead(gas_din)==LOW) stato = 1; //c'è gas
-	
-	//if(digitalRead(gas_din)==HIGH && stato != 3 ) stato = 2; //non c'è gas. entro una sola volta nello stato di waiting
-	if(digitalRead(gas_din)==HIGH) stato = 2;
-
 	switch(stato){
-		case 1:
-			//rilevata fuga di gas
-			ad_value=analogRead(gas_ain);
-			scrivi_seriale('a',ad_value);
-			/*
-			sprintf(buffer,"%c%d%c",'a',ad_value,'_');
-			
-					Serial.print('a');
-					Serial.print(ad_value);
-			Serial.print('_');
-			
-			Serial.print(buffer);
-			buffer="";
-			*/
-			break;
-		case 2:
-			//nessuna fuga di gas
-			/*
-			ogni mezzo secondo invio la misurazione del gas a livello normale
-			vecchia versione
-			Serial.print("w");
-			stato = 3; 
-			break;
-			*/
-			while(true){
+		case 0:
+			if(digitalRead(gas_din)==HIGH){//non c'è gas
 				ad_value=analogRead(gas_ain);
 				scrivi_seriale('w',ad_value);
-				/* 
-				sprintf(buffer,"%c%d%c",'w',ad_value,'_');
-				Serial.print(buffer);
-				buffer="";
-				*/
-				if (digitalRead(gas_din)==LOW){
-					stato = 1;
-					ad_value=analogRead(gas_ain);
-					scrivi_seriale('a',ad_value);
-					break;
-				} 
-
-				if (Serial.available() > 0) {
-					stato = 3;
-					break;
-				}
-				delay(500);
 			}
+			if (digitalRead(gas_din)==LOW){//c'è gas
+				ad_value=analogRead(gas_ain);
+				scrivi_seriale('a',ad_value);
+			} 
+			if (Serial.available() > 0) {
+				stato = 1;
+				break;
+			}
+			delay(500);
 			break;
-		case 3:
-			/*lo stato 3 è quello che riceve dati dal bot python*/
-			//if (Serial.available() > 0) {
-			/*
-			l'if non serve più perche il controllo l'ho già fatto nello stato 2
-			*/
-			// read the incoming byte:
+		case 1:
+			
 			incomingByte = Serial.read();
 			//applico la decisione dello stato in base al carattere ricevuto dal bot
 			if(incomingByte == 'c') valv_stato = 0; //chiudi la valvola
 			if(incomingByte == 'o') valv_stato = 1; //apri la valvola
 			if(incomingByte == 'i') valv_stato = 2; //ignora emergenza
 			//}
+      		stato=0;
 			break;
 	}
 
@@ -107,8 +67,9 @@ void loop()
 			break;
 		case 3:
 			//ignoro l'emergenza
-      break;
+      		break;
 	}
-
+	valv_stato = -1;
+  
 	delay(500);
 }

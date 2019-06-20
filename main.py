@@ -1,26 +1,41 @@
 import serial
 import telebot
 import time
+import numpy as np
 connected = False
 port = 'COM3'
 baud = 9600
 ser = serial.Serial(port, baud, timeout=0)
 
 TOKEN = "634289689:AAHPe0wqJomFHR7cZR4kbqY5Bw8HeO1_Ecg"
-
+VAL_MAX = 250 #valore massimo di gas rilevato
 
 bot = telebot.TeleBot(TOKEN)
 stato = 0
 chiuso = 0
 ingnora = 0
+
+media = 20.334672693788715
+sigma = 81.20074108736098
+
+
 # 0 - devo ancora eseguire /start
 # 1 - ho eseguito già /start
 # 2 - ho chiuso la valvola
 # 3 - ignoro l'emergenza
 
 
-def estrai_valore(str):
+def calcola_probabilita(val, media, sigma):
+    return (1 / (sigma * np.sqrt(2 * np.pi)) * np.exp((-1 / 2) * ((val - media) ** 2 / sigma ** 2)))
+
+
+def scrivi_val_su_file(val):
     out_file = open("misurazioni.csv", "a+")
+    out_file.write('"' + val + '"' + "\n")
+    out_file.close()
+
+
+def estrai_valore(str):
     val = ''
     for x in str:
         if x != 'a' and x != 'w' and x != '_':
@@ -30,11 +45,10 @@ def estrai_valore(str):
             break
     if val !='':
         print("Valore letto : ", val)
-        out_file.write('"' + val + '"' + "\n")
-        out_file.close()
+        scrivi_val_su_file(val)
+    else:
+        val = '0'
     return val
-
-
 
 def chiudi_valvola():
     '''
@@ -52,24 +66,41 @@ def apri_valvola():
 # Handle '/start' and '/help'
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
-    bot.reply_to(message, "digita /start, o guarda i comandi preimpostati")
+    markdown = """
+    *Benvenuto nel sistema di monitoramento per rilevamento fughe di gas*
+    _Ecco la lista di comandi disponibili :_
+    
+    /help - Lista comandi disponibili
+    /start - Avvio monitoramento del sistema
+    /chiudi - Chiude la valvola
+    /apri - Apre la valvola
+    /ignora - Ignora il messaggio di emergenza
+    """
+    bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
 
 @bot.message_handler(commands=['start'])
 def start_control(message):
-    global stato
-    global chiuso
-
+    global chiuso , media, sigma,stato,VAL_MAX
+    SOGLIA =calcola_probabilita(VAL_MAX,media,sigma)
     flag = 0
     fuga = 0
     if stato == 1:
         bot.send_message(message.chat.id, "IMPOSSIBILE : SONO GIA' IN ASCOLTO")
         return
     if stato == 0:
+
         stato = 1
         while True:
             while ser.inWaiting() > 0:
+
                 data_str = ser.read(ser.inWaiting()).decode('ascii')
                 val=estrai_valore(data_str)
+                if int(val) >= 0 or val != '':
+                    prob = calcola_probabilita(int(val), media, sigma)
+                else:
+                    print("errore calcolo probabilità")
+                    prob = calcola_probabilita(0, media, sigma)
+
                 if data_str[0] == 'w' and flag == 0:
                     print("tutto ok")
                     flag =1
@@ -80,9 +111,14 @@ def start_control(message):
                     '''
                     time.sleep(0.5)
                     bot.send_message(message.chat.id, "I sistemi funzionano normalmente. Resto in attesa")
-
-                if data_str[0] == 'a':
-                    print("attenzione")
+                '''
+                Qui controllo anchese la probabilità della misurazione è sotto la soglia ancor prima di ottenere
+                un messaggio di allarme
+                in questo modo se il sensore dovesse non funzionare più la sua uscita analogica sarà
+                nulla ed arduino invierà sicuramente un segnale che inizia con 'a'
+                '''
+                if data_str[0] == 'a' or prob < SOGLIA:
+                    print("attenzione, il bot verrà arrestato. Il condotto verrà chiuso. RILEVATO GAS")
                     fuga = 1
                     bot.send_message(message.chat.id, "Emergenza : Rilevata fuga di gas : " + val +
                                      "\nChiudere il condotto ? /chiudi"
@@ -108,8 +144,7 @@ def start_control(message):
     time.sleep(5)
     if chiuso == 0:
         # richiamerò la funzione che mandail messaggio di chiusura ad arduino
-        chiuso=1
-
+        chiuso = 1
         markdown = """
                    *Valvola chiusa*
                    """
@@ -144,13 +179,7 @@ def start_control(message):
     chiudi_valvola()
 
 
-'''
-# Handle all other messages with content_type 'text' (content_types defaults to ['text'])
-@bot.message_handler(func=lambda message: True)
-def echo_message(message):
-    bot.reply_to(message, message.text)
-# default handler for every other text
-'''
+
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def command_default(m):
     # this is the standard reply to a normal message
