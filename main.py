@@ -84,8 +84,10 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['start'])
 def start_control(message):
-    global chiuso , media, sigma,stato,VAL_MAX
+    global chiuso , media, sigma,stato,VAL_MAX,ignora
+
     SOGLIA =calcola_probabilita(VAL_MAX,media,sigma)
+
     flag = 0
     fuga = 0
     if stato == 1:
@@ -146,21 +148,26 @@ def start_control(message):
                 break # esco dal while infinito
     stato=0
     time.sleep(5)
-    if chiuso == 0:
-        # richiamerò la funzione che mandail messaggio di chiusura ad arduino
-        chiuso = 1
-        markdown = """
-                   *Valvola chiusa*
-                   """
-        bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
-        chiudi_valvola()
+    if ignora == 0:
+        if chiuso == 0:
+            # richiamerò la funzione che mandail messaggio di chiusura ad arduino
+            chiuso = 1
+            markdown = """
+                       *Valvola chiusa*
+                       """
+            bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+            chiudi_valvola()
+        else:
+            markdown = """
+                        _La valvola è già chiusa_
+                        """
+            bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
+            chiudi_valvola()
     else:
-        markdown = """
-                    _La valvola è già chiusa_
-                    """
+        markdown = "*messaggio di allarme ignorato*" \
+                   "\nDigitare /start per ricominciare il controllo del sistema"
         bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
-        chiudi_valvola()
-
+        ignora = 0
 
 @bot.message_handler(commands=['ignora'])
 def start_control(message):
