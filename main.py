@@ -204,8 +204,8 @@ def calcola_istogramma():
 
     fig = plt.figure()
     plt.hist(seq_in, normed=False, bins=30)
-    plt.ylabel('Frequenza');
-    plt.xlabel('Valori');
+    plt.ylabel('Frequenza')
+    plt.xlabel('Valori')
     fig.savefig('plot.png')
     #plt.show()
 
