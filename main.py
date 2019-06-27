@@ -175,19 +175,67 @@ def start_control(message):
     ignora = 1
     bot.reply_to(message, "ignoro")
 
+
+
+def controllo_errore_chiusura_apertura():
+    mex =""
+    flag = 0
+    mex_letto =""
+    while True:
+        while ser.inWaiting() > 0:
+            mex_letto = ser.read(ser.inWaiting()).decode('ascii')
+        print(mex_letto)
+        for i in mex_letto:
+            if i == 'e':
+                flag = 1
+            if i == 'f':
+                flag = 2
+            if i == 'T':
+                flag = 3
+        if flag == 1 or flag == 2 or flag== 3:
+            break
+    if flag == 1:
+        mex += "ERRORE NELLA APERTURA." \
+              "NECESSARIA AZIONE MANUALE"
+    if flag == 2 and flag == 1:
+        mex += "\nFLUSSO NON RILEVATO"
+    if flag == 3:
+        mex = ""
+
+    return mex
+
+
+
+
+
+
 @bot.message_handler(commands=['apri'])
 def start_control(message):
     global chiuso
-    chiuso = 0
-    bot.reply_to(message, "apro")
-    apri_valvola()
+    if chiuso == 1:
+        chiuso = 0
+        bot.reply_to(message, "apro")
+        apri_valvola()
+        mess = controllo_errore_chiusura_apertura()
+        if mess != "":
+            bot.send_message(message.chat.id, mess)
+    else:
+        bot.reply_to(message, "è già aperta")
+
 
 @bot.message_handler(commands=['chiudi'])
 def start_control(message):
     global chiuso
-    chiuso = 1
-    bot.reply_to(message, "chiudo")
-    chiudi_valvola()
+    if chiuso == 0:
+        chiuso = 1
+        bot.reply_to(message, "chiudo")
+        chiudi_valvola()
+        mess = controllo_errore_chiusura_apertura()
+        if mess != "":
+            bot.send_message(message.chat.id, mess)
+    else:
+        bot.reply_to(message, "è già chiusa")
+
 
 def calcola_istogramma():
     seq_in = np.array([])

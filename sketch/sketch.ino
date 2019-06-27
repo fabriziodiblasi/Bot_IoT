@@ -1,9 +1,13 @@
 //analog in A0 -->uscita anlogica del sensore
 //digital in 2 -->usnita digitale del sensore
+//pin 6 sensore di flusso
+//pin 7 sensore di chiusura
 #include <stdio.h>
 #include <Servo.h>
-int gas_din=2;
-int gas_ain=A0;
+int flow_sensor = 4;
+int close_sensor = 7;
+int gas_din = 2;
+int gas_ain = A0;
 int ad_value;
 int incomingByte = 0;
 int valvola = 1; // 1 = aperta   |  0 = chiusa
@@ -13,7 +17,7 @@ Servo myservo;
 int pos = 0;
 
 volatile int stato = 0;
-volatile int valv_stato = -1;
+volatile int valv_stato = 1;
 
 void scrivi_seriale(char tipo_messaggio, int value){
 	sprintf(buffer,"%c%d%c",tipo_messaggio,value,'_');
@@ -21,13 +25,32 @@ void scrivi_seriale(char tipo_messaggio, int value){
 	buffer[0]='\0';
 }
 
+void apri_valvola(){
+	for(pos = 180; pos>=1; pos-=1){
+		myservo.write(pos);
+		delay(15);
+	}
+}
+
+void chiudi_valvola(){
+	for(pos = 0; pos < 170; pos += 1){
+		myservo.write(pos);
+		delay(15);
+	}
+}
+
+
 void setup()
 {
-  myservo.attach(9);
-	pinMode(gas_din,INPUT);
-	pinMode(gas_ain,INPUT);
-	Serial.begin(9600);
+  	myservo.attach(9);
+  	pinMode(gas_din,INPUT);
+  	pinMode(gas_ain,INPUT);
+    pinMode(flow_sensor,INPUT);
+    pinMode(close_sensor,INPUT);
+  	Serial.begin(9600);
+  	apri_valvola();
 }
+
 void loop()
 {
  
@@ -55,34 +78,65 @@ void loop()
 			if(incomingByte == 'o') valv_stato = 1; //apri la valvola
 			if(incomingByte == 'i') valv_stato = 2; //ignora emergenza
 			//}
-      		stato=0;
+	  		stato=0;
 			break;
 	}
 
+	//valvola : 1 = aperta   |  0 = chiusa
 	switch(valv_stato){
 		case 0:
 			//chiudo la vavola
-			valvola = 0;
-      for(pos = 0; pos < 90; pos += 1)
-      {
-        myservo.write(pos);
-        delay(15);
-      }
+			if(valvola == 1){
+				valvola = 0;
+				
+				chiudi_valvola();
+
+				
+				// gli switch sono normalmente aperti.
+				// se premo lo switch il circuito si chiude e passa corrente
+				
+				//if(digitalRead(close_sensor) == LOW || digitalRead(flow_sensor) == HIGH){
+				if(digitalRead(close_sensor) == LOW ){	
+					/*
+					se premo lo switch del sensore di flusso significa che pur essendo chiuso 
+					ho un passaggio di gas
+					*/
+					scrivi_seriale('e',0);
+					scrivi_seriale('f',0);// f = flow
+					// "f0_" = errore per il controllo del flusso
+				}else{
+					scrivi_seriale('T',0);//True
+				}
+				
+			}
 			break;
 		case 1:
 			//apro la valovla
-			if(valvola != 1) valvola = 1;
-      for(pos = 90; pos>=1; pos-=1)
-      {
-        myservo.write(pos);
-        delay(15);
-      }
+			if(valvola == 0){
+
+			 	valvola = 1;
+				apri_valvola();
+				
+				//if(digitalRead(close_sensor) == HIGH || digitalRead(flow_sensor) == LOW){
+				if(digitalRead(close_sensor) == HIGH){
+					/*
+					se premo lo switch del sensore di flusso significa che pur essendo chiuso 
+					ho un passaggio di gas
+					*/
+					scrivi_seriale('e',1);
+					scrivi_seriale('f',1);// f = flow
+					// "f0_" = errore per il controllo del flusso
+				}else{
+					scrivi_seriale('T',1);//True
+				}
+							
+			}
 			break;
 		case 3:
 			//ignoro l'emergenza
-      		break;
+	  		break;
 	}
-	valv_stato = -1;
+	//valv_stato = -1;
   
 	delay(500);
 }
