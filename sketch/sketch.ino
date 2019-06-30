@@ -95,14 +95,14 @@ void loop()
 				// gli switch sono normalmente aperti.
 				// se premo lo switch il circuito si chiude e passa corrente
 				
-				//if(digitalRead(close_sensor) == LOW || digitalRead(flow_sensor) == HIGH){
-				if(digitalRead(close_sensor) == LOW ){	
+				if(digitalRead(close_sensor) == LOW || digitalRead(flow_sensor) == HIGH){
+				//if(digitalRead(close_sensor) == LOW ){	
 					/*
 					se premo lo switch del sensore di flusso significa che pur essendo chiuso 
 					ho un passaggio di gas
 					*/
-					scrivi_seriale('e',0);
-					scrivi_seriale('f',0);// f = flow
+					if(digitalRead(close_sensor) == LOW) scrivi_seriale('e',0);
+					if(digitalRead(flow_sensor) == HIGH) scrivi_seriale('f',0);// f = flow
 					// "f0_" = errore per il controllo del flusso
 				}else{
 					scrivi_seriale('T',0);//True
@@ -117,14 +117,14 @@ void loop()
 			 	valvola = 1;
 				apri_valvola();
 				
-				//if(digitalRead(close_sensor) == HIGH || digitalRead(flow_sensor) == LOW){
-				if(digitalRead(close_sensor) == HIGH){
+				if(digitalRead(close_sensor) == HIGH || digitalRead(flow_sensor) == LOW){
+				//if(digitalRead(close_sensor) == HIGH){
 					/*
 					se premo lo switch del sensore di flusso significa che pur essendo chiuso 
 					ho un passaggio di gas
 					*/
-					scrivi_seriale('e',1);
-					scrivi_seriale('f',1);// f = flow
+					if(digitalRead(close_sensor) == HIGH) scrivi_seriale('e',1);
+          if(digitalRead(flow_sensor) == LOW) scrivi_seriale('f',1);// f = flow
 					// "f0_" = errore per il controllo del flusso
 				}else{
 					scrivi_seriale('T',1);//True

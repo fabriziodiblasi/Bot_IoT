@@ -4,6 +4,9 @@ import time
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import threading
+
+mutex = threading.Lock()
 
 connected = False
 port = 'COM3'
@@ -16,14 +19,14 @@ VAL_MAX = 250 #valore massimo di gas rilevato
 bot = telebot.TeleBot(TOKEN)
 stato = 0
 chiuso = 0
-ingnora = 0
+ignora = 0
 
 media = 20.334672693788715
 sigma = 81.20074108736098
 
 
 # 0 - devo ancora eseguire /start
-# 1 - ho eseguito già /start
+# 1 - ho eseguito gia' /start
 # 2 - ho chiuso la valvola
 # 3 - ignoro l'emergenza
 
@@ -84,7 +87,7 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['start'])
 def start_control(message):
-    global chiuso , media, sigma,stato,VAL_MAX,ignora
+    global chiuso , media, sigma,stato,VAL_MAX,ignora, mutex
 
     SOGLIA =calcola_probabilita(VAL_MAX,media,sigma)
 
@@ -98,14 +101,18 @@ def start_control(message):
         stato = 1
         while True:
             while ser.inWaiting() > 0:
-
+                mutex.acquire()
                 data_str = ser.read(ser.inWaiting()).decode('ascii')
+                mutex.release()
                 val=estrai_valore(data_str)
+
                 if int(val) >= 0 or val != '':
                     prob = calcola_probabilita(int(val), media, sigma)
                 else:
                     print("errore calcolo probabilità")
                     prob = calcola_probabilita(0, media, sigma)
+                if len(data_str) == 0:
+                    data_str = " "
 
                 if data_str[0] == 'w' and flag == 0:
                     print("tutto ok")
@@ -118,10 +125,10 @@ def start_control(message):
                     time.sleep(0.5)
                     bot.send_message(message.chat.id, "I sistemi funzionano normalmente. Resto in attesa")
                 '''
-                Qui controllo anchese la probabilità della misurazione è sotto la soglia ancor prima di ottenere
-                un messaggio di allarme
-                in questo modo se il sensore dovesse non funzionare più la sua uscita analogica sarà
-                nulla ed arduino invierà sicuramente un segnale che inizia con 'a'
+                    Qui controllo anchese la probabilita' della misurazione e' sotto la soglia ancor prima di ottenere
+                    un messaggio di allarme
+                    in questo modo se il sensore dovesse non funzionare più la sua uscita analogica sara'
+                    nulla ed arduino inviera' sicuramente un segnale che inizia con 'a'
                 '''
                 if data_str[0] == 'a' or prob < SOGLIA:
                     print("attenzione, il bot verrà arrestato. Il condotto verrà chiuso. RILEVATO GAS")
@@ -195,13 +202,13 @@ def controllo_errore_chiusura_apertura():
         if flag == 1 or flag == 2 or flag== 3:
             break
     if flag == 1:
-        mex += "ERRORE NELLA APERTURA." \
+        mex += "ERRORE CHIUSURA/APERTURA !!!!" \
               "NECESSARIA AZIONE MANUALE"
     if flag == 2 and flag == 1:
         mex += "\nFLUSSO NON RILEVATO"
     if flag == 3:
         mex = ""
-
+    print("mex : ", mex)
     return mex
 
 
@@ -211,12 +218,14 @@ def controllo_errore_chiusura_apertura():
 
 @bot.message_handler(commands=['apri'])
 def start_control(message):
-    global chiuso
+    global chiuso, mutex
     if chiuso == 1:
         chiuso = 0
         bot.reply_to(message, "apro")
         apri_valvola()
+        mutex.acquire()
         mess = controllo_errore_chiusura_apertura()
+        mutex.release()
         if mess != "":
             bot.send_message(message.chat.id, mess)
     else:
@@ -230,7 +239,11 @@ def start_control(message):
         chiuso = 1
         bot.reply_to(message, "chiudo")
         chiudi_valvola()
+
+        mutex.acquire()
         mess = controllo_errore_chiusura_apertura()
+        mutex.release()
+
         if mess != "":
             bot.send_message(message.chat.id, mess)
     else:
