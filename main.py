@@ -44,7 +44,7 @@ def scrivi_val_su_file(val):
 def estrai_valore(str):
     val = ''
     for x in str:
-        if x != 'a' and x != 'w' and x != '_':
+        if x != 'e' and x != 'f' and x != 'a' and x != 'w' and x != '_':
             # print("x : ",x)
             val = val + x
         if x =='_':
