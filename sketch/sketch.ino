@@ -90,7 +90,7 @@ void loop()
 				valvola = 0;
 				
 				chiudi_valvola();
-
+        delay(1000);
 				
 				// gli switch sono normalmente aperti.
 				// se premo lo switch il circuito si chiude e passa corrente
@@ -117,6 +117,8 @@ void loop()
 			 	valvola = 1;
 				apri_valvola();
 				
+				delay(1000);
+       
 				if(digitalRead(close_sensor) == HIGH || digitalRead(flow_sensor) == LOW){
 				//if(digitalRead(close_sensor) == HIGH){
 					/*

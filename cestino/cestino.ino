@@ -19,12 +19,14 @@ void loop() {
     Serial.println("flow_sensor : LOW");
   }
   delay(500);
+  
+  /*
   if(digitalRead(close_sensor)==HIGH){
     Serial.println("close_sensor : HIGH");
   }
    if(digitalRead(close_sensor)==LOW){
     Serial.println("close_sensor : LOW");
   }
-  
+  */
   delay(500);
 }
