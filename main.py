@@ -43,12 +43,13 @@ def scrivi_val_su_file(val):
 
 def estrai_valore(str):
     val = ''
-    for x in str:
-        if x != 'e' and x != 'f' and x != 'a' and x != 'w' and x != '_':
-            # print("x : ",x)
-            val = val + x
-        if x =='_':
-            break
+    if len(str) > 0 and (str[0] == 'w' or str[0] == 'a'):
+        for x in str:
+            if x != 'a' and x != 'w' and x != '_':
+                # print("x : ",x)
+                val = val + x
+            if x =='_':
+                break
     if val !='':
         print("Valore letto : ", val)
         scrivi_val_su_file(val)
@@ -199,13 +200,15 @@ def controllo_errore_chiusura_apertura():
                 flag = 2
             if i == 'T':
                 flag = 3
-        if flag == 1 or flag == 2 or flag== 3:
+        if flag == 1 or flag == 2 or flag == 3:
             break
+    print("FLAG : ", flag)
     if flag == 1:
-        mex += "ERRORE CHIUSURA/APERTURA !!!!" \
+        mex += "ERRORE CHIUSURA/APERTURA !!!!\n" \
               "NECESSARIA AZIONE MANUALE"
-    if flag == 2 and flag == 1:
-        mex += "\nFLUSSO NON RILEVATO"
+    if flag == 2:
+        mex += "ATTENZIONE RILEVATA ANOMALIA NEL FLUSSO DEL GAS!!!!" \
+               "NECESSARIO CONTROLLO MANUALE"
     if flag == 3:
         mex = ""
     print("mex : ", mex)
@@ -257,10 +260,12 @@ def calcola_istogramma():
     # text = in_file.read()
     for i in in_file.read().split():
         #print(i)
+
         i = int(i)
         if i != 0 and i < 900:
             # print(i)
             seq_in = np.append(seq_in, int(i))
+
     in_file.close()
 
     fig = plt.figure()
