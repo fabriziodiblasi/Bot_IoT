@@ -4,10 +4,10 @@
 //pin 7 sensore di chiusura
 #include <stdio.h>
 #include <Servo.h>
-int flow_sensor = 4;
-int close_sensor = 7;
-int gas_din = 2;
-int gas_ain = A0;
+#define flow_sensor  4
+#define close_sensor  7
+#define gas_din  2
+#define gas_ain  A0
 int ad_value;
 int incomingByte = 0;
 int valvola = 1; // 1 = aperta   |  0 = chiusa
@@ -90,7 +90,7 @@ void loop()
 				valvola = 0;
 				
 				chiudi_valvola();
-        delay(1000);
+        		delay(1000);
 				
 				// gli switch sono normalmente aperti.
 				// se premo lo switch il circuito si chiude e passa corrente
@@ -126,7 +126,7 @@ void loop()
 					ho un passaggio di gas
 					*/
 					if(digitalRead(close_sensor) == HIGH) scrivi_seriale('e',1);
-          if(digitalRead(flow_sensor) == LOW) scrivi_seriale('f',1);// f = flow
+          			if(digitalRead(flow_sensor) == LOW) scrivi_seriale('f',1);// f = flow
 					// "f0_" = errore per il controllo del flusso
 				}else{
 					scrivi_seriale('T',1);//True

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import threading
 
 mutex = threading.Lock()
+mutex_fault = threading.Lock()
 
 connected = False
 port = 'COM3'
@@ -20,6 +21,8 @@ bot = telebot.TeleBot(TOKEN)
 stato = 0
 chiuso = 0
 ignora = 0
+fault = 0 #flag che indica il fault del sistema
+
 
 media = 20.334672693788715
 sigma = 81.20074108736098
@@ -30,6 +33,18 @@ sigma = 81.20074108736098
 # 2 - ho chiuso la valvola
 # 3 - ignoro l'emergenza
 
+def scrivi_fault(val):
+    global mutex_fault,fault
+    mutex_fault.acquire()
+    fault = val
+    mutex_fault.release()
+
+def leggi_fault():
+    global mutex_fault, fault
+    mutex_fault.acquire()
+    ret =fault
+    mutex_fault.release()
+    return ret
 
 def calcola_probabilita(val, media, sigma):
     return (1 / (sigma * np.sqrt(2 * np.pi)) * np.exp((-1 / 2) * ((val - media) ** 2 / sigma ** 2)))
@@ -94,6 +109,7 @@ def start_control(message):
 
     flag = 0
     fuga = 0
+    fault_letto = 0
     if stato == 1:
         bot.send_message(message.chat.id, "IMPOSSIBILE : SONO GIA' IN ASCOLTO")
         return
@@ -131,7 +147,7 @@ def start_control(message):
                     in questo modo se il sensore dovesse non funzionare più la sua uscita analogica sara'
                     nulla ed arduino inviera' sicuramente un segnale che inizia con 'a'
                 '''
-                if data_str[0] == 'a' or prob < SOGLIA:
+                if data_str[0] == 'a' or prob < SOGLIA :
                     print("attenzione, il bot verrà arrestato. Il condotto verrà chiuso. RILEVATO GAS")
                     fuga = 1
                     bot.send_message(message.chat.id, "Emergenza : Rilevata fuga di gas : " + val +
@@ -146,9 +162,15 @@ def start_control(message):
                                 """
                     ret_msg = bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
                     break #esco dal while della ricezione da seriale
+                fault_letto = leggi_fault()
+                if fault_letto == 1 :
+                    print("attenzione, il bot verrà arrestato. FAULT DEL SISTEMA")
+                    bot.send_message(message.chat.id, "attenzione, il bot verrà arrestato. FAULT DEL SISTEMA")
+                    break  # esco dal while della ricezione da seriale
+
                 time.sleep(0.5)
 
-            if fuga == 1:
+            if fuga == 1 or fault_letto == 1:
                 '''alla fine del while di ricezione da seriale controllo il motivo dell'uscita
                 perchè è possibile o che arduino sia malfunzionante e quindi non manda più niente
                 oppure 
@@ -156,6 +178,9 @@ def start_control(message):
                 break # esco dal while infinito
     stato=0
     time.sleep(5)
+    if fault_letto == 1:
+        scrivi_fault(0)
+        return
     if ignora == 0:
         if chiuso == 0:
             # richiamerò la funzione che mandail messaggio di chiusura ad arduino
@@ -206,9 +231,11 @@ def controllo_errore_chiusura_apertura():
     if flag == 1:
         mex += "ERRORE CHIUSURA/APERTURA !!!!\n" \
               "NECESSARIA AZIONE MANUALE"
+        scrivi_fault(1)
     if flag == 2:
         mex += "ATTENZIONE RILEVATA ANOMALIA NEL FLUSSO DEL GAS!!!!" \
                "NECESSARIO CONTROLLO MANUALE"
+        scrivi_fault(1)
     if flag == 3:
         mex = ""
     print("mex : ", mex)
@@ -230,6 +257,7 @@ def start_control(message):
         mess = controllo_errore_chiusura_apertura()
         mutex.release()
         if mess != "":
+            #chiuso = 0
             bot.send_message(message.chat.id, mess)
     else:
         bot.reply_to(message, "è già aperta")
@@ -248,6 +276,7 @@ def start_control(message):
         mutex.release()
 
         if mess != "":
+            #chiuso = 1
             bot.send_message(message.chat.id, mess)
     else:
         bot.reply_to(message, "è già chiusa")
