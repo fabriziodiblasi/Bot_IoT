@@ -165,7 +165,8 @@ def start_control(message):
                 fault_letto = leggi_fault()
                 if fault_letto == 1 :
                     print("attenzione, il bot verrà arrestato. FAULT DEL SISTEMA")
-                    bot.send_message(message.chat.id, "attenzione, il bot verrà arrestato. FAULT DEL SISTEMA")
+                    bot.send_message(message.chat.id, "attenzione, il bot verrà arrestato. FAULT DEL SISTEMA"
+                                                      "\n Premere /start per ripartire")
                     break  # esco dal while della ricezione da seriale
 
                 time.sleep(0.5)
@@ -190,12 +191,17 @@ def start_control(message):
                        """
             bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
             chiudi_valvola()
+            mutex.acquire()
+            mess, flag_valvola = controllo_errore_chiusura_apertura()
+            mutex.release()
+            if flag_valvola == 1:
+                bot.send_message(message.chat.id, mess)
         else:
             markdown = """
                         _La valvola è già chiusa_
                         """
             bot.send_message(message.chat.id, markdown, parse_mode="Markdown")
-            chiudi_valvola()
+
     else:
         markdown = "*messaggio di allarme ignorato*" \
                    "\nDigitare /start per ricominciare il controllo del sistema"
@@ -211,12 +217,16 @@ def start_control(message):
 
 
 def controllo_errore_chiusura_apertura():
+    global mutex
     mex =""
     flag = 0
     mex_letto =""
     while True:
+
         while ser.inWaiting() > 0:
+
             mex_letto = ser.read(ser.inWaiting()).decode('ascii')
+
         print(mex_letto)
         for i in mex_letto:
             if i == 'e':
@@ -227,6 +237,7 @@ def controllo_errore_chiusura_apertura():
                 flag = 3
         if flag == 1 or flag == 2 or flag == 3:
             break
+
     print("FLAG : ", flag)
     if flag == 1:
         mex += "ERRORE CHIUSURA/APERTURA !!!!\n" \
@@ -239,7 +250,7 @@ def controllo_errore_chiusura_apertura():
     if flag == 3:
         mex = ""
     print("mex : ", mex)
-    return mex
+    return mex, flag
 
 
 
@@ -250,15 +261,22 @@ def controllo_errore_chiusura_apertura():
 def start_control(message):
     global chiuso, mutex
     if chiuso == 1:
-        chiuso = 0
+        #chiuso = 0
         bot.reply_to(message, "apro")
         apri_valvola()
         mutex.acquire()
-        mess = controllo_errore_chiusura_apertura()
+        mess, flag_valvola = controllo_errore_chiusura_apertura()
         mutex.release()
+        print("mess : ", mess, " flag_valvola : ", flag_valvola)
         if mess != "":
             #chiuso = 0
             bot.send_message(message.chat.id, mess)
+        if flag_valvola == 1:
+            chiuso = 1
+
+        if flag_valvola == 3 or flag_valvola == 2:
+            # or flag_valvola == 2 è stato inserito solo per scopi simulativi
+            chiuso = 0
     else:
         bot.reply_to(message, "è già aperta")
 
@@ -267,17 +285,24 @@ def start_control(message):
 def start_control(message):
     global chiuso
     if chiuso == 0:
-        chiuso = 1
+        #chiuso = 1
         bot.reply_to(message, "chiudo")
         chiudi_valvola()
 
         mutex.acquire()
-        mess = controllo_errore_chiusura_apertura()
+        mess, flag_valvola = controllo_errore_chiusura_apertura()
         mutex.release()
-
+        print ("mess : ", mess, " flag_valvola : ", flag_valvola)
         if mess != "":
             #chiuso = 1
             bot.send_message(message.chat.id, mess)
+        if flag_valvola == 1:
+            chiuso = 0
+        if flag_valvola == 3 or flag_valvola == 2:
+            # or flag_valvola == 2 è stato inserito solo per scopi simulativi
+            # in modo che non bigogna mai premere per forza il sensore di flusso
+
+            chiuso = 1
     else:
         bot.reply_to(message, "è già chiusa")
 
